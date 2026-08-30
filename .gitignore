@@ -1,0 +1,15 @@
+﻿# Build outputs and Arduino tool caches
+build/
+build_*/
+.arduino-cli-config/
+.arduino-cli-portable/
+**/build/
+**/build_*/
+
+# VS Code / OS noise
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Large local archives
+*.zip
