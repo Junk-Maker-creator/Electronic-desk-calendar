@@ -2,8 +2,9 @@
 .vscode/
 .DS_Store
 Thumbs.db
+*.log
 
-# Build outputs / Arduino caches
+# Arduino build outputs and local tool caches
 build/
 build_*/
 **/build/
@@ -11,9 +12,9 @@ build_*/
 .arduino-cli-config/
 .arduino-cli-portable/
 
-# Large local archives / backups
+# Local archives and backup snapshots
 *.zip
 _Backups/
 _backup_stage_before_modular/
 
-# Keep the actual project source tracked; ignore only generated/residual workspace files
+# Keep the actual source tree and library assets tracked; ignore generated artifacts only.
