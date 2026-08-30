@@ -18,6 +18,7 @@ LV_FONT_DECLARE(ui_font_todo_cjk_16);
 LV_FONT_DECLARE(ui_font_say_16);
 LV_FONT_DECLARE(ui_font_cn_24);
 LV_FONT_DECLARE(ui_font_cn_32);
+LV_FONT_DECLARE(ui_font_countdown_title_32);
 LV_FONT_DECLARE(ui_font_blessing_32);
 LV_FONT_DECLARE(ui_font_units_14);
 LV_FONT_DECLARE(ui_font_weather_64);
@@ -107,11 +108,12 @@ static uint32_t countdownRemainingSeconds = 0;
 static uint32_t countdownEndMillis = 0;
 static bool countdownRunning = false;
 // Phone-configurable daily reminders. Times are minutes since midnight.
+static const uint16_t DEFAULT_LUNCH_END_MINUTES = 13 * 60 + 40;
 static uint16_t hydrationStartMinutes = 8 * 60;
 static uint16_t hydrationEndMinutes = 18 * 60;
 static uint16_t hydrationIntervalMinutes = 2 * 60;
 static uint32_t hydrationLastSlotKey = 0;
-static uint16_t lunchEndMinutes = 13 * 60;
+static uint16_t lunchEndMinutes = DEFAULT_LUNCH_END_MINUTES;
 static uint32_t muyuCount = 0;
 static uint32_t lastMuyuTap = 0;
 

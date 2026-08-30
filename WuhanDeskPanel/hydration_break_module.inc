@@ -1,19 +1,71 @@
 // Daily hydration reminder and manually-started lunch break.
-// Kept small: the animation moves only the cup/arm objects, not the screen.
+// Kept small: animate only the person and cup objects, not the screen.
 
 static lv_obj_t *hydrationPopup = nullptr;
+static lv_obj_t *hydrationHead = nullptr;
+static lv_obj_t *hydrationBody = nullptr;
+static lv_obj_t *hydrationEye = nullptr;
+static lv_obj_t *hydrationLeg = nullptr;
+static lv_obj_t *hydrationLeg2 = nullptr;
 static lv_obj_t *hydrationCup = nullptr;
 static lv_obj_t *hydrationArm = nullptr;
 static lv_obj_t *hydrationDrinkDots = nullptr;
 static lv_timer_t *hydrationAutoCloseTimer = nullptr;
 static lv_anim_t hydrationAnimation;
 
-static void hydrationAnimationCb(void *, int32_t angle)
+static int32_t hydrationSmoothStep(int32_t progress)
 {
-    if (hydrationArm) lv_obj_set_style_transform_angle(hydrationArm, angle, 0);
-    if (hydrationCup) lv_obj_set_y(hydrationCup, 122 - angle / 9);
+    if (progress <= 0) return 0;
+    if (progress >= 1000) return 1000;
+    return (int32_t)((int64_t)progress * progress * (3000 - 2 * progress) / 1000000LL);
+}
+
+static int32_t hydrationMove(int32_t progress, int32_t start, int32_t end)
+{
+    if (progress <= start) return 0;
+    if (progress >= end) return 1000;
+    return hydrationSmoothStep((progress - start) * 1000 / (end - start));
+}
+
+static int32_t hydrationLift(int32_t progress)
+{
+    if (progress < 120) return 0;
+    if (progress < 440) return hydrationMove(progress, 120, 440);
+    if (progress < 560) return 1000;
+    if (progress < 900) return 1000 - hydrationMove(progress, 560, 900);
+    return 0;
+}
+
+static int32_t hydrationSip(int32_t progress)
+{
+    if (progress < 440) return 0;
+    if (progress < 500) return hydrationMove(progress, 440, 500);
+    if (progress < 590) return 1000;
+    if (progress < 650) return 1000 - hydrationMove(progress, 590, 650);
+    return 0;
+}
+
+static void hydrationAnimationCb(void *, int32_t progress)
+{
+    const int32_t lift = hydrationLift(progress);
+    const int32_t sip = hydrationSip(progress);
+    const int32_t bob = lift * 2 / 1000;
+    if (hydrationHead) lv_obj_set_y(hydrationHead, 72 - bob);
+    if (hydrationBody) lv_obj_set_y(hydrationBody, 116 - bob);
+    if (hydrationEye) lv_obj_set_y(hydrationEye, 88 - bob);
+    if (hydrationLeg) lv_obj_set_y(hydrationLeg, 178 - bob);
+    if (hydrationLeg2) lv_obj_set_y(hydrationLeg2, 178 - bob);
+    if (hydrationArm) {
+        lv_obj_set_y(hydrationArm, 135 - bob);
+        lv_obj_set_style_transform_angle(hydrationArm, -(lift * 230) / 1000, 0);
+    }
+    if (hydrationCup) {
+        lv_obj_set_x(hydrationCup, 160 - (lift * 22) / 1000);
+        lv_obj_set_y(hydrationCup, 122 - (lift * 28) / 1000 - bob);
+        lv_obj_set_style_transform_angle(hydrationCup, -(sip * 120) / 1000, 0);
+    }
     if (hydrationDrinkDots) lv_obj_set_style_opa(hydrationDrinkDots,
-                                                  angle > 0 ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+                                                  sip > 120 ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
 }
 
 static void closeHydrationPopup(lv_event_t *)
@@ -37,15 +89,14 @@ static void hydrationAutoCloseCb(lv_timer_t *timer)
 static void showHydrationPopup()
 {
     if (!hydrationPopup) return;
-    // Keep this animation label ASCII-only; the water drops are drawn below.
+    // Keep this animation label ASCII-only so it renders on every font set.
     if (hydrationDrinkDots) lv_label_set_text(hydrationDrinkDots, "...");
     lv_obj_clear_flag(hydrationPopup, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(hydrationPopup);
     lv_anim_init(&hydrationAnimation);
     lv_anim_set_var(&hydrationAnimation, hydrationPopup);
-    lv_anim_set_values(&hydrationAnimation, 0, 300);
-    lv_anim_set_time(&hydrationAnimation, 550);
-    lv_anim_set_playback_time(&hydrationAnimation, 550);
+    lv_anim_set_values(&hydrationAnimation, 0, 1000);
+    lv_anim_set_time(&hydrationAnimation, 2600);
     lv_anim_set_repeat_count(&hydrationAnimation, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_exec_cb(&hydrationAnimation, hydrationAnimationCb);
     lv_anim_start(&hydrationAnimation);
@@ -79,31 +130,31 @@ static void createHydrationReminderUi()
     lv_obj_align(hint, LV_ALIGN_TOP_MID, 55, 65);
 
     // A tiny person holding a cup. The forearm and cup are animated together.
-    lv_obj_t *head = lv_obj_create(hydrationPopup);
-    lv_obj_set_size(head, 42, 42); lv_obj_set_pos(head, 70, 72);
-    lv_obj_set_style_radius(head, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(head, lv_color_hex(0xFCD5B5), 0);
-    lv_obj_set_style_border_width(head, 0, 0);
-    lv_obj_t *body = lv_obj_create(hydrationPopup);
-    lv_obj_set_size(body, 50, 72); lv_obj_set_pos(body, 66, 116);
-    lv_obj_set_style_radius(body, 20, 0);
-    lv_obj_set_style_bg_color(body, lv_color_hex(0x4F8CFF), 0);
-    lv_obj_set_style_border_width(body, 0, 0);
-    lv_obj_t *eye = lv_obj_create(hydrationPopup);
-    lv_obj_set_size(eye, 6, 6); lv_obj_set_pos(eye, 80, 88);
-    lv_obj_set_style_radius(eye, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(eye, lv_color_hex(0x0F172A), 0);
-    lv_obj_set_style_border_width(eye, 0, 0);
-    lv_obj_t *leg = lv_obj_create(hydrationPopup);
-    lv_obj_set_size(leg, 12, 30); lv_obj_set_pos(leg, 74, 178);
-    lv_obj_set_style_radius(leg, 6, 0);
-    lv_obj_set_style_bg_color(leg, lv_color_hex(0x2563EB), 0);
-    lv_obj_set_style_border_width(leg, 0, 0);
-    lv_obj_t *leg2 = lv_obj_create(hydrationPopup);
-    lv_obj_set_size(leg2, 12, 30); lv_obj_set_pos(leg2, 96, 178);
-    lv_obj_set_style_radius(leg2, 6, 0);
-    lv_obj_set_style_bg_color(leg2, lv_color_hex(0x2563EB), 0);
-    lv_obj_set_style_border_width(leg2, 0, 0);
+    hydrationHead = lv_obj_create(hydrationPopup);
+    lv_obj_set_size(hydrationHead, 42, 42); lv_obj_set_pos(hydrationHead, 70, 72);
+    lv_obj_set_style_radius(hydrationHead, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(hydrationHead, lv_color_hex(0xFCD5B5), 0);
+    lv_obj_set_style_border_width(hydrationHead, 0, 0);
+    hydrationBody = lv_obj_create(hydrationPopup);
+    lv_obj_set_size(hydrationBody, 50, 72); lv_obj_set_pos(hydrationBody, 66, 116);
+    lv_obj_set_style_radius(hydrationBody, 20, 0);
+    lv_obj_set_style_bg_color(hydrationBody, lv_color_hex(0x4F8CFF), 0);
+    lv_obj_set_style_border_width(hydrationBody, 0, 0);
+    hydrationEye = lv_obj_create(hydrationPopup);
+    lv_obj_set_size(hydrationEye, 6, 6); lv_obj_set_pos(hydrationEye, 80, 88);
+    lv_obj_set_style_radius(hydrationEye, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(hydrationEye, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_border_width(hydrationEye, 0, 0);
+    hydrationLeg = lv_obj_create(hydrationPopup);
+    lv_obj_set_size(hydrationLeg, 12, 30); lv_obj_set_pos(hydrationLeg, 74, 178);
+    lv_obj_set_style_radius(hydrationLeg, 6, 0);
+    lv_obj_set_style_bg_color(hydrationLeg, lv_color_hex(0x2563EB), 0);
+    lv_obj_set_style_border_width(hydrationLeg, 0, 0);
+    hydrationLeg2 = lv_obj_create(hydrationPopup);
+    lv_obj_set_size(hydrationLeg2, 12, 30); lv_obj_set_pos(hydrationLeg2, 96, 178);
+    lv_obj_set_style_radius(hydrationLeg2, 6, 0);
+    lv_obj_set_style_bg_color(hydrationLeg2, lv_color_hex(0x2563EB), 0);
+    lv_obj_set_style_border_width(hydrationLeg2, 0, 0);
     hydrationArm = lv_obj_create(hydrationPopup);
     lv_obj_set_size(hydrationArm, 64, 12); lv_obj_set_pos(hydrationArm, 105, 135);
     lv_obj_set_style_radius(hydrationArm, 8, 0);
@@ -117,8 +168,10 @@ static void createHydrationReminderUi()
     lv_obj_set_style_bg_color(hydrationCup, lv_color_hex(0x67D5FF), 0);
     lv_obj_set_style_border_width(hydrationCup, 3, 0);
     lv_obj_set_style_border_color(hydrationCup, lv_color_hex(0xE0F2FE), 0);
-    lv_obj_t *cupHandle = lv_obj_create(hydrationPopup);
-    lv_obj_set_size(cupHandle, 16, 22); lv_obj_set_pos(cupHandle, 187, 132);
+    lv_obj_set_style_transform_pivot_x(hydrationCup, 5, 0);
+    lv_obj_set_style_transform_pivot_y(hydrationCup, 36, 0);
+    lv_obj_t *cupHandle = lv_obj_create(hydrationCup);
+    lv_obj_set_size(cupHandle, 16, 22); lv_obj_set_pos(cupHandle, 27, 10);
     lv_obj_set_style_radius(cupHandle, 10, 0);
     lv_obj_set_style_bg_color(cupHandle, lv_color_hex(0x0B2342), 0);
     lv_obj_set_style_border_width(cupHandle, 3, 0);
@@ -129,7 +182,8 @@ static void createHydrationReminderUi()
     lv_obj_set_style_bg_color(water, lv_color_hex(0x0EA5E9), 0);
     lv_obj_set_style_border_width(water, 0, 0);
     hydrationDrinkDots = lv_label_create(hydrationPopup);
-    lv_label_set_text(hydrationDrinkDots, "···");
+    lv_label_set_text(hydrationDrinkDots, "...");
+    lv_obj_set_style_text_font(hydrationDrinkDots, &lv_font_montserrat_20, 0);
     lv_obj_set_pos(hydrationDrinkDots, 125, 93);
     lv_obj_set_style_text_color(hydrationDrinkDots, lv_color_hex(0xBAE6FD), 0);
 

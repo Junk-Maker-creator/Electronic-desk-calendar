@@ -11,19 +11,30 @@ A compact ESP32-based desk panel for a workbench or office desk. It presents the
 - Wi‑Fi setup and local phone control
 
 ## Project structure
-- `WuhanDeskPanel.ino` — main sketch entry point
-- `*_module.inc` — feature modules for weather, UI, Wi‑Fi, calendar, reminders, etc.
-- `_Complete/` — bundled Arduino libraries and supporting assets
-- `build*/` and local tool caches — generated build artifacts, ignored by Git
+- `WuhanDeskPanel/WuhanDeskPanel.ino` — main sketch entry point
+- `WuhanDeskPanel/*_module.inc` — focused feature modules
+- `_Complete/Arduino_libraries/` — bundled libraries used by the tested build
+- `build.ps1` — repeatable Windows Arduino CLI build command
+- `build*/`, `.build/`, and local tool caches — generated artifacts, ignored by Git
 
-## Building
-1. Open the project in the Arduino IDE or Arduino CLI.
-2. Use the ESP32 board package and required libraries from `_Complete/Arduino_libraries`.
-3. Compile for the target board profile used by the Waveshare ESP32-S3 Touch LCD 7 panel.
-4. Flash the firmware to the device.
+## Download and build
+
+The Arduino sketch is kept in the standard `WuhanDeskPanel/WuhanDeskPanel.ino` folder, so the project remains identifiable after downloading a GitHub ZIP whose top-level directory has a different name.
+
+### Arduino IDE
+
+1. Clone this repository or download and extract the ZIP.
+2. Install `esp32 by Espressif Systems` in Boards Manager.
+3. Copy the contents of `_Complete/Arduino_libraries/` into your Arduino sketchbook `libraries` folder, or install the matching libraries listed in `README_中文.md`.
+4. Open `WuhanDeskPanel/WuhanDeskPanel.ino`.
+5. Select `Waveshare ESP32-S3-Touch-LCD-7` and use PSRAM enabled, 8MB flash, QIO flash mode, and the `huge_app` 3MB application partition.
+
+### Arduino CLI
+
+Install Arduino CLI and the ESP32 board package, then run `powershell -ExecutionPolicy Bypass -File .\build.ps1` from the repository root. The script uses the bundled libraries and the same board options as the verified firmware build.
 
 ## Notes
-This repository is intended for source control and project sharing. Generated build folders, local caches, and temporary backup snapshots are excluded from Git when possible.
+This repository is intended for source control and project sharing. Generated build folders, local caches, and temporary backup snapshots are excluded from Git.
 
 ## License
 Please check the project’s source headers and bundled third-party library licenses before commercial redistribution.

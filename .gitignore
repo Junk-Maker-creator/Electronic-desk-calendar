@@ -9,6 +9,9 @@ build/
 build_*/
 **/build/
 **/build_*/
+.build/
+.buildsrc/
+.tmp_arduino_cli/
 .arduino-cli-config/
 .arduino-cli-portable/
 
@@ -16,5 +19,6 @@ build_*/
 *.zip
 _Backups/
 _backup_stage_before_modular/
+_Complete/WuhanDeskPanel/
 
 # Keep the actual source tree and library assets tracked; ignore generated artifacts only.

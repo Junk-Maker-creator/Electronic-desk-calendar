@@ -23,32 +23,36 @@
    - `lvgl` 8.4.0（不要使用 LVGL 9）
 4. 微雪官方示例包已经包含匹配的库和 `lv_conf.h`。如果库管理器安装后编译异常，使用官方仓库 `examples/Arduino/libraries` 中的版本覆盖安装。
 
-### 使用完整依赖包（推荐）
+### 使用仓库自带依赖包（推荐）
 
-如果你下载的是 `WuhanDeskPanel_Complete.zip`：
+如果你下载的是本仓库 ZIP：
 
 1. 关闭 Arduino IDE。
-2. 解压 ZIP。
-3. 把解压后的 `Arduino_libraries` 文件夹里的**所有内容**复制到 `C:\Users\84720\Documents\Arduino\libraries\`。
-4. 最终应能看到 `C:\Users\84720\Documents\Arduino\libraries\ESP32_Display_Panel\library.properties`。
+2. 解压 ZIP，在仓库根目录进入 `_Complete\Arduino_libraries`。
+3. 把 `Arduino_libraries` 文件夹里的**所有内容**复制到 Arduino 的 sketchbook `libraries` 文件夹。
+4. 最终应能看到 `ESP32_Display_Panel\library.properties`。
 5. 同一目录还应有 `ESP32_IO_Expander`、`esp-lib-utils`、`lvgl` 四个库文件夹，以及一个 `lv_conf.h` 文件。
-6. 重新打开 Arduino IDE，再打开 `WuhanDeskPanel\WuhanDeskPanel.ino` 编译。
+6. 重新打开 Arduino IDE，再打开仓库内的 `WuhanDeskPanel\WuhanDeskPanel.ino` 编译。
 
 如果出现“目标文件已存在”，选择替换。不要使用 LVGL 9，否则接口不兼容。
 
 ## 编译与烧录
 
-1. 保持 `WuhanDeskPanel.ino`、`esp_lv_adapter_arduino.cpp`、`esp_lv_adapter_arduino.h` 和 `esp_panel_board_custom_conf.h` 在同一个 `WuhanDeskPanel` 文件夹。
-2. 双击打开 `WuhanDeskPanel.ino`。
+1. 保持 `WuhanDeskPanel` 文件夹内的 `.ino`、`.inc`、`.c`、`.cpp` 和 `.h` 文件完整，不要只复制主文件。
+2. 打开 `WuhanDeskPanel\WuhanDeskPanel.ino`。
 3. 开发板选择 `Waveshare ESP32-S3-Touch-LCD-7`，选择对应 COM 口。
    - `PSRAM`：`OPI PSRAM`
    - `Flash Mode`：`QIO 80MHz`
    - `Flash Size`：`8MB`
-   - `Partition Scheme`：`8M with spiffs`
+   - `Partition Scheme`：`huge_app`（3MB 应用分区）
    - 使用 `USB` 接口上传时将 `USB CDC On Boot` 设为 `Enabled`；使用 `USB TO UART` 接口时设为 `Disabled`
 4. 使用有数据传输能力的 Type-C 线连接板上标有 `USB TO UART`/`UART` 的接口。
 5. 点击“上传”。完成后按一下板上的 `RESET`。
 6. 如果无法进入下载模式，按住 `BOOT`，短按 `RESET`，松开 `BOOT` 后再次上传。
+
+### Arduino CLI 快速编译
+
+在仓库根目录运行 `powershell -ExecutionPolicy Bypass -File .\build.ps1`。脚本会自动使用 `_Complete\Arduino_libraries`，并使用与已验证固件相同的开发板、PSRAM、Flash 和 `huge_app` 参数。
 
 ## 首次使用
 

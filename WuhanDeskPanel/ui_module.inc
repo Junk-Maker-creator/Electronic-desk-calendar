@@ -809,7 +809,7 @@ static void createRecoveryUi()
     makeMainNav(countdownScreen, 5);
     lv_obj_t *countdownTitle = lv_label_create(countdownScreen);
     lv_label_set_text(countdownTitle, "倒计时");
-    lv_obj_set_style_text_font(countdownTitle, &ui_font_cn_32, 0);
+    lv_obj_set_style_text_font(countdownTitle, &ui_font_countdown_title_32, 0);
     lv_obj_set_style_text_color(countdownTitle, lv_color_white(), 0);
     lv_obj_align(countdownTitle, LV_ALIGN_TOP_MID, 0, 68);
     countdownLabel = lv_label_create(countdownScreen);
