@@ -1,0 +1,8 @@
+board_manager:
+  additional_urls: []
+directories:
+  data: C:\Users\84720\AppData\Local\Arduino15
+  downloads: C:\Users\84720\AppData\Local\Arduino15\staging
+  user: C:\Users\84720\Desktop\WuhanDeskPanel\_Complete
+library:
+  enable_unsafe_install: false
