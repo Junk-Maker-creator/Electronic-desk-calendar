@@ -1336,5 +1336,6 @@ static void createRecoveryUi()
     lv_obj_set_style_text_font(lv_obj_get_child(phoneClose, 0), &ui_font_cn_16, 0);
     lv_obj_add_flag(phoneControlPanel, LV_OBJ_FLAG_HIDDEN);
     createHydrationReminderUi();
+    createStandingReminderUi();
     createGuideScreen();
 }

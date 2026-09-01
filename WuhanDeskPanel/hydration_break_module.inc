@@ -89,6 +89,7 @@ static void hydrationAutoCloseCb(lv_timer_t *timer)
 static void showHydrationPopup()
 {
     if (!hydrationPopup) return;
+    if (standingReminderActive) return;
     // Keep this animation label ASCII-only so it renders on every font set.
     if (hydrationDrinkDots) lv_label_set_text(hydrationDrinkDots, "...");
     lv_obj_clear_flag(hydrationPopup, LV_OBJ_FLAG_HIDDEN);
@@ -200,7 +201,7 @@ static void createHydrationReminderUi()
     lv_obj_add_flag(hydrationPopup, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void runHydrationReminder(const struct tm &now)
+static void runHydrationReminder(const struct tm &now, bool standingPriority)
 {
     uint16_t minuteOfDay = now.tm_hour * 60 + now.tm_min;
     if (hydrationStartMinutes >= hydrationEndMinutes || hydrationIntervalMinutes == 0 ||
@@ -210,6 +211,13 @@ static void runHydrationReminder(const struct tm &now)
                       (uint32_t)(now.tm_mon + 1) * 100UL + (uint32_t)now.tm_mday;
     uint32_t slotKey = dayKey * 100UL + slot;
     if (slotKey == hydrationLastSlotKey) return;
+    if (standingPriority || standingReminderActive) {
+        // Consume this slot so the lower-priority hydration reminder does not
+        // appear a moment later after the standing popup closes.
+        hydrationLastSlotKey = slotKey;
+        prefs.putULong("drinkSlot", slotKey);
+        return;
+    }
     hydrationLastSlotKey = slotKey;
     prefs.putULong("drinkSlot", slotKey);
     showHydrationPopup();

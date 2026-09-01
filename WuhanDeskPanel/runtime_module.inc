@@ -68,7 +68,10 @@ static void uiTimer(lv_timer_t *)
         }
     }
 
-    if (getLocalTime(&now, 0)) runHydrationReminder(now);
+    if (getLocalTime(&now, 0)) {
+        const bool standingTriggered = runStandingReminder(now);
+        runHydrationReminder(now, standingTriggered);
+    }
 
     if (mainCalendar != nullptr) {
         static uint32_t highlightedYear = 0, highlightedMonth = 0;

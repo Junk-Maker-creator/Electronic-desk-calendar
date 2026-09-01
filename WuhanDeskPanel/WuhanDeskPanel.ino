@@ -14,6 +14,7 @@
 #include "esp_lv_adapter_arduino.h"
 
 LV_FONT_DECLARE(ui_font_cn_16);
+LV_FONT_DECLARE(ui_font_standing_16);
 LV_FONT_DECLARE(ui_font_todo_cjk_16);
 LV_FONT_DECLARE(ui_font_say_16);
 LV_FONT_DECLARE(ui_font_cn_24);
@@ -113,6 +114,11 @@ static uint16_t hydrationStartMinutes = 8 * 60;
 static uint16_t hydrationEndMinutes = 18 * 60;
 static uint16_t hydrationIntervalMinutes = 2 * 60;
 static uint32_t hydrationLastSlotKey = 0;
+static uint16_t standingStartMinutes = 8 * 60;
+static uint16_t standingEndMinutes = 18 * 60;
+static uint16_t standingIntervalMinutes = 3 * 60;
+static uint32_t standingLastSlotKey = 0;
+static bool standingReminderActive = false;
 static uint16_t lunchEndMinutes = DEFAULT_LUNCH_END_MINUTES;
 static uint32_t muyuCount = 0;
 static uint32_t lastMuyuTap = 0;
@@ -171,7 +177,9 @@ static void updatePhoneQr();
 static void showGuideScreenEvent(lv_event_t *e);
 static void createGuideScreen();
 static void createHydrationReminderUi();
-static void runHydrationReminder(const struct tm &now);
+static void runHydrationReminder(const struct tm &now, bool standingPriority = false);
+static void createStandingReminderUi();
+static bool runStandingReminder(const struct tm &now);
 static bool startLunchBreak();
 
 static portMUX_TYPE weatherMux = portMUX_INITIALIZER_UNLOCKED;
@@ -334,6 +342,8 @@ static void showCountdownScreenEvent(lv_event_t *) { lv_scr_load(countdownScreen
 
 #include "hydration_break_module.inc"
 
+#include "standing_reminder_module.inc"
+
 static void countdownSetEvent(lv_event_t *)
 {
     countdownRunning = false;
@@ -394,6 +404,10 @@ void setup()
     hydrationIntervalMinutes = prefs.getUShort("drinkEvery", hydrationIntervalMinutes);
     lunchEndMinutes = prefs.getUShort("lunchEnd", lunchEndMinutes);
     hydrationLastSlotKey = prefs.getULong("drinkSlot", 0);
+    standingStartMinutes = prefs.getUShort("standStart", standingStartMinutes);
+    standingEndMinutes = prefs.getUShort("standEnd", standingEndMinutes);
+    standingIntervalMinutes = prefs.getUShort("standEvery", standingIntervalMinutes);
+    standingLastSlotKey = prefs.getULong("standSlot", 0);
     loadRememberedNetworks();
     stateUntilEpoch = (time_t)prefs.getULong64("stateUntil", 0);
 

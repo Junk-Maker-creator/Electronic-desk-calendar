@@ -7,7 +7,7 @@ A compact ESP32-based desk panel for a workbench or office desk. It presents the
 - Calendar + todo tracking
 - Weather overview with forecast updates
 - Work state toggles and reminders
-- Hydration and lunch-break assistance
+- Hydration, sedentary standing, and lunch-break assistance
 - Wi‑Fi setup and local phone control
 
 ## Project structure

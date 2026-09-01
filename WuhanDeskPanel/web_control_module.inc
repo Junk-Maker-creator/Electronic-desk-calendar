@@ -7,6 +7,9 @@ static uint8_t pendingWebState = 0;
 static uint16_t pendingHydrationStart = 480;
 static uint16_t pendingHydrationEnd = 1080;
 static uint16_t pendingHydrationInterval = 120;
+static uint16_t pendingStandingStart = 480;
+static uint16_t pendingStandingEnd = 1080;
+static uint16_t pendingStandingInterval = 3 * 60;
 static uint16_t pendingLunchEnd = DEFAULT_LUNCH_END_MINUTES;
 static char pendingWebTodo[96] = {};
 static char pendingWebDeadline[24] = {};
@@ -20,6 +23,7 @@ enum : uint32_t {
     WEB_CMD_TODO_ACTION = 1U << 5,
     WEB_CMD_REMINDERS = 1U << 6,
     WEB_CMD_HYDRATION_TEST = 1U << 7,
+    WEB_CMD_STANDING_TEST = 1U << 8,
 };
 
 static const char WEB_PAGE[] PROGMEM = R"HTML(<!doctype html><html lang="zh-CN"><head>
@@ -39,13 +43,14 @@ const names=['上班','忙碌','开会','休息','下班','出差','休假','午
 const todosEl=document.getElementById('todos'),msgEl=document.getElementById('msg');
 const reminderCard=document.createElement('div');
 reminderCard.className='card';
-reminderCard.innerHTML=`<h3>喝水提醒</h3><label>提醒时段</label><input id="drinkStart" type="time" value="08:00"> 至 <input id="drinkEnd" type="time" value="18:00"><label>间隔（小时）</label><input id="drinkInterval" type="number" min="0.25" max="12" step="0.25" value="2"><button onclick="saveReminders()">保存喝水设置</button><button onclick="drinkTest()">喝水弹窗启动</button><hr><h3>午休</h3><label>午休结束时间</label><input id="lunchEnd" type="time" value="13:40"><button onclick="saveReminders()">保存午休时间</button><br><small>保存时间不会自动进入午休；请在状态栏手动点击“午休”，屏幕会显示结束时间。</small>`;
+reminderCard.innerHTML=`<h3>喝水提醒</h3><label>提醒时段</label><input id="drinkStart" type="time" value="08:00"> 至 <input id="drinkEnd" type="time" value="18:00"><label>间隔（小时）</label><input id="drinkInterval" type="number" min="0.25" max="12" step="0.25" value="2"><button onclick="saveReminders()">保存喝水设置</button><button onclick="drinkTest()">喝水弹窗启动</button><hr><h3>久坐站立提醒</h3><label>提醒时段</label><input id="standingStart" type="time" value="08:00"> 至 <input id="standingEnd" type="time" value="18:00"><label>间隔（小时）</label><input id="standingInterval" type="number" min="0.25" max="12" step="0.25" value="3"><button onclick="saveReminders()">保存站立设置</button><button onclick="standingTest()">站立弹窗启动</button><hr><h3>午休</h3><label>午休结束时间</label><input id="lunchEnd" type="time" value="13:40"><button onclick="saveReminders()">保存午休时间</button><br><small>保存时间不会自动进入午休；请在状态栏手动点击“午休”，屏幕会显示结束时间。</small>`;
 document.querySelector('.wrap').appendChild(reminderCard);
 function toMinutes(value){let p=value.split(':');return Number(p[0])*60+Number(p[1])}
 function asTime(value){return String(Math.floor(value/60)).padStart(2,'0')+':'+String(value%60).padStart(2,'0')}
-async function saveReminders(){let hours=Number(drinkInterval.value);if(!Number.isFinite(hours)){msgEl.textContent='请输入有效的喝水间隔';return}await post('/api/reminders',{drinkStart:toMinutes(drinkStart.value),drinkEnd:toMinutes(drinkEnd.value),drinkInterval:Math.round(hours*60),lunchEnd:toMinutes(lunchEnd.value)})}
+async function saveReminders(){let drinkHours=Number(drinkInterval.value);let standingHours=Number(standingInterval.value);if(!Number.isFinite(drinkHours)||!Number.isFinite(standingHours)){msgEl.textContent='请输入有效的提醒间隔';return}await post('/api/reminders',{drinkStart:toMinutes(drinkStart.value),drinkEnd:toMinutes(drinkEnd.value),drinkInterval:Math.round(drinkHours*60),standingStart:toMinutes(standingStart.value),standingEnd:toMinutes(standingEnd.value),standingInterval:Math.round(standingHours*60),lunchEnd:toMinutes(lunchEnd.value)})}
 async function drinkTest(){await post('/api/hydration-test',{})}
-async function loadReminderSettings(){try{let s=await(await fetch('/api/status?ts='+Date.now(),{cache:'no-store'})).json();if(document.activeElement!==drinkStart)drinkStart.value=asTime(s.drinkStart);if(document.activeElement!==drinkEnd)drinkEnd.value=asTime(s.drinkEnd);if(document.activeElement!==drinkInterval)drinkInterval.value=(s.drinkInterval/60).toFixed(2).replace(/\.00$/,'');if(document.activeElement!==lunchEnd)lunchEnd.value=asTime(s.lunchEnd)}catch(e){}}
+async function standingTest(){await post('/api/standing-test',{})}
+async function loadReminderSettings(){try{let s=await(await fetch('/api/status?ts='+Date.now(),{cache:'no-store'})).json();if(document.activeElement!==drinkStart)drinkStart.value=asTime(s.drinkStart);if(document.activeElement!==drinkEnd)drinkEnd.value=asTime(s.drinkEnd);if(document.activeElement!==drinkInterval)drinkInterval.value=(s.drinkInterval/60).toFixed(2).replace(/\.00$/,'');if(document.activeElement!==standingStart)standingStart.value=asTime(s.standingStart);if(document.activeElement!==standingEnd)standingEnd.value=asTime(s.standingEnd);if(document.activeElement!==standingInterval)standingInterval.value=(s.standingInterval/60).toFixed(2).replace(/\.00$/,'');if(document.activeElement!==lunchEnd)lunchEnd.value=asTime(s.lunchEnd)}catch(e){}}
 loadReminderSettings();
 states.innerHTML=names.map((n,i)=>`<button onclick="setState(${i})">${n}</button>`).join('');
 function markState(i){document.querySelectorAll('#states button').forEach((b,n)=>b.classList.toggle('active',n===Number(i)))}
@@ -88,6 +93,9 @@ static void startWebControl()
                       ",\"drinkStart\":" + hydrationStartMinutes +
                       ",\"drinkEnd\":" + hydrationEndMinutes +
                       ",\"drinkInterval\":" + hydrationIntervalMinutes +
+                      ",\"standingStart\":" + standingStartMinutes +
+                      ",\"standingEnd\":" + standingEndMinutes +
+                      ",\"standingInterval\":" + standingIntervalMinutes +
                       ",\"lunchEnd\":" + lunchEndMinutes +
                       ",\"heap\":" + ESP.getFreeHeap() +
                       ",\"psram\":" + ESP.getFreePsram() +
@@ -136,15 +144,22 @@ static void startWebControl()
         int drinkStart = webServer.arg("drinkStart").toInt();
         int drinkEnd = webServer.arg("drinkEnd").toInt();
         int drinkInterval = webServer.arg("drinkInterval").toInt();
+        int standingStart = webServer.arg("standingStart").toInt();
+        int standingEnd = webServer.arg("standingEnd").toInt();
+        int standingInterval = webServer.arg("standingInterval").toInt();
         int lunchEnd = webServer.arg("lunchEnd").toInt();
         if (drinkStart < 0 || drinkStart > 1439 || drinkEnd < 1 || drinkEnd > 1440 ||
             drinkStart >= drinkEnd || drinkInterval < 15 || drinkInterval > 720 ||
+            standingStart < 0 || standingStart > 1439 || standingEnd < 1 || standingEnd > 1440 ||
+            standingStart >= standingEnd || standingInterval < 15 || standingInterval > 720 ||
             lunchEnd < 0 || lunchEnd > 1439) {
             webReply(false, "提醒参数无效"); return;
         }
         portENTER_CRITICAL(&webCommandMux);
         pendingHydrationStart = (uint16_t)drinkStart; pendingHydrationEnd = (uint16_t)drinkEnd;
         pendingHydrationInterval = (uint16_t)drinkInterval; pendingLunchEnd = (uint16_t)lunchEnd;
+        pendingStandingStart = (uint16_t)standingStart; pendingStandingEnd = (uint16_t)standingEnd;
+        pendingStandingInterval = (uint16_t)standingInterval;
         pendingWebCommands |= WEB_CMD_REMINDERS;
         portEXIT_CRITICAL(&webCommandMux);
         webReply(true, "提醒设置已保存");
@@ -154,6 +169,12 @@ static void startWebControl()
         pendingWebCommands |= WEB_CMD_HYDRATION_TEST;
         portEXIT_CRITICAL(&webCommandMux);
         webReply(true, "喝水弹窗已启动");
+    });
+    webServer.on("/api/standing-test", HTTP_POST, []() {
+        portENTER_CRITICAL(&webCommandMux);
+        pendingWebCommands |= WEB_CMD_STANDING_TEST;
+        portEXIT_CRITICAL(&webCommandMux);
+        webReply(true, "站立弹窗已启动");
     });
     webServer.onNotFound([]() { webServer.send(404, "text/plain", "Not found"); });
     webServer.begin();
@@ -194,18 +215,22 @@ static void processWebCommands()
     uint32_t commands;
     uint8_t state, todoIndex;
     bool todoDelete;
-    uint16_t drinkStart, drinkEnd, drinkInterval, lunchEnd;
+    uint16_t drinkStart, drinkEnd, drinkInterval;
+    uint16_t standingStart, standingEnd, standingInterval, lunchEnd;
     char todo[96], deadline[24];
     portENTER_CRITICAL(&webCommandMux);
     commands = pendingWebCommands; pendingWebCommands = 0;
     state = pendingWebState;
     drinkStart = pendingHydrationStart; drinkEnd = pendingHydrationEnd;
     drinkInterval = pendingHydrationInterval; lunchEnd = pendingLunchEnd;
+    standingStart = pendingStandingStart; standingEnd = pendingStandingEnd;
+    standingInterval = pendingStandingInterval;
     todoIndex = pendingWebTodoIndex; todoDelete = pendingWebTodoDelete;
     strlcpy(todo, pendingWebTodo, sizeof(todo)); strlcpy(deadline, pendingWebDeadline, sizeof(deadline));
     portEXIT_CRITICAL(&webCommandMux);
     if (!commands) return;
     if (commands & WEB_CMD_HYDRATION_TEST) showHydrationPopup();
+    if (commands & WEB_CMD_STANDING_TEST) showStandingPopup();
 
     if ((commands & WEB_CMD_STATE) && state != 7) {
         stateUntilEpoch = 0;
@@ -220,9 +245,14 @@ static void processWebCommands()
     if (commands & WEB_CMD_REMINDERS) {
         hydrationStartMinutes = drinkStart; hydrationEndMinutes = drinkEnd;
         hydrationIntervalMinutes = drinkInterval; lunchEndMinutes = lunchEnd;
+        standingStartMinutes = standingStart; standingEndMinutes = standingEnd;
+        standingIntervalMinutes = standingInterval;
         prefs.putUShort("drinkStart", hydrationStartMinutes);
         prefs.putUShort("drinkEnd", hydrationEndMinutes);
         prefs.putUShort("drinkEvery", hydrationIntervalMinutes);
+        prefs.putUShort("standStart", standingStartMinutes);
+        prefs.putUShort("standEnd", standingEndMinutes);
+        prefs.putUShort("standEvery", standingIntervalMinutes);
         prefs.putUShort("lunchEnd", lunchEndMinutes);
         showToast("提醒设置已由手机保存");
     }
