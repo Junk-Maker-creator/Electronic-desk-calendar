@@ -292,19 +292,19 @@ static void calendarCellDrawEvent(lv_event_t *e)
     bool officialRest = isOfficialRestDay(shown->year, shown->month, day);
     bool adjustedWork = isAdjustedWorkday(shown->year, shown->month, day);
     bool weekend = !adjustedWork && (dateTm.tm_wday == 0 || dateTm.tm_wday == 6);
-    uint32_t color = personal ? 0x7138A8 :
-                     (officialRest ? 0xC43D52 :
-                     (festival ? 0xB77912 :
-                     (weekend ? 0x713044 : 0x164A78)));
+    uint32_t color = personal ? 0x443B50 :
+                     (officialRest ? 0x593C40 :
+                     (festival ? 0x554936 :
+                     (weekend ? 0x423437 : 0x282F36)));
     dsc->rect_dsc->bg_opa = LV_OPA_COVER;
     dsc->rect_dsc->bg_color = lv_color_hex(color);
     dsc->rect_dsc->radius = 8;
     dsc->rect_dsc->border_opa = LV_OPA_COVER;
-    dsc->rect_dsc->border_width = personal || festival || officialRest ? 2 : 1;
-    dsc->rect_dsc->border_color = lv_color_hex(personal ? 0xD8B4FE :
-                                               (festival ? 0xFFD35A :
-                                               (officialRest ? 0xFF9AA5 : 0x3477A8)));
-    dsc->label_dsc->color = lv_color_white();
+    dsc->rect_dsc->border_width = 1;
+    dsc->rect_dsc->border_color = lv_color_hex(personal ? 0xC8B9DF :
+                                               (festival ? 0xE4C18D :
+                                               (officialRest ? 0xDCB1BC : 0x394149)));
+    dsc->label_dsc->color = lv_color_hex(0xE5E9ED);
 }
 
 static void updateCalendarAgenda(uint32_t year, uint32_t month)

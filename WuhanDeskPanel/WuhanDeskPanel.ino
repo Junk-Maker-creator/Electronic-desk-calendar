@@ -211,18 +211,7 @@ static const uint32_t stateColors[] = {0x1677FF, 0xF59E0B, 0x7C3AED, 0x06A6B8, 0
 
 #include "wifi_events_module.inc"
 
-static void updateStatusUi(uint8_t index)
-{
-    currentWorkState = index;
-    lv_label_set_text(statusLabel, workStates[index]);
-    lv_obj_set_style_bg_color(statusLabel, lv_color_hex(stateColors[index]), 0);
-    for (uint8_t i = 0; i < 9; ++i) {
-        if (statusButtons[i] == nullptr) continue;
-        lv_obj_set_style_border_width(statusButtons[i], i == index ? 3 : 0, 0);
-        lv_obj_set_style_border_color(statusButtons[i], lv_color_white(), 0);
-        lv_obj_set_style_opa(statusButtons[i], i == index ? LV_OPA_COVER : LV_OPA_70, 0);
-    }
-}
+static void updateStatusUi(uint8_t index);
 
 static void statusEvent(lv_event_t *e)
 {
@@ -339,6 +328,8 @@ static void showForecastScreenEvent(lv_event_t *) { lv_scr_load(forecastScreen);
 static void showCountdownScreenEvent(lv_event_t *) { lv_scr_load(countdownScreen); }
 
 #include "muyu_module.inc"
+
+#include "reminder_animation_module.inc"
 
 #include "hydration_break_module.inc"
 

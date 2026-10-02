@@ -55,8 +55,11 @@ static void populateWifiScanList(int count)
         lv_obj_t *button = lv_btn_create(wifiScanList);
         lv_obj_set_width(button, lv_pct(100));
         lv_obj_set_height(button, 42);
-        lv_obj_set_style_bg_color(button, lv_color_hex(0x155E4B), 0);
+        lv_obj_set_style_bg_color(button, lv_color_hex(0x304651), 0);
         lv_obj_set_style_radius(button, 8, 0);
+        lv_obj_set_style_shadow_width(button, 0, 0);
+        lv_obj_set_style_border_width(button, 1, 0);
+        lv_obj_set_style_border_color(button, lv_color_hex(0x394149), 0);
         lv_obj_add_event_cb(button, selectNetworkEvent, LV_EVENT_CLICKED, reinterpret_cast<void *>(shown));
         lv_obj_t *label = lv_label_create(button);
         lv_label_set_text(label, line.c_str());
@@ -77,8 +80,11 @@ static void populateWifiScanList(int count)
         lv_obj_t *button = lv_btn_create(wifiScanList);
         lv_obj_set_width(button, lv_pct(100));
         lv_obj_set_height(button, 42);
-        lv_obj_set_style_bg_color(button, lv_color_hex(0x1E3A5F), 0);
+        lv_obj_set_style_bg_color(button, lv_color_hex(0x282F36), 0);
         lv_obj_set_style_radius(button, 8, 0);
+        lv_obj_set_style_shadow_width(button, 0, 0);
+        lv_obj_set_style_border_width(button, 1, 0);
+        lv_obj_set_style_border_color(button, lv_color_hex(0x394149), 0);
         lv_obj_add_event_cb(button, selectNetworkEvent, LV_EVENT_CLICKED, reinterpret_cast<void *>(shown));
         lv_obj_t *label = lv_label_create(button);
         lv_label_set_text(label, line.c_str());

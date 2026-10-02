@@ -1,79 +1,160 @@
-// Daily sedentary reminder and a small standing stretch animation.
-// Keep the animation bounded to local LVGL objects so it does not disturb the RGB display.
+// Daily sedentary reminder with an articulated, locally drawn stretch loop.
+// One small invalidated scene avoids transformed objects and RGB/PSRAM churn.
 
 static lv_obj_t *standingPopup = nullptr;
-static lv_obj_t *standingHead = nullptr;
-static lv_obj_t *standingBody = nullptr;
-static lv_obj_t *standingEye = nullptr;
-static lv_obj_t *standingLeg = nullptr;
-static lv_obj_t *standingLeg2 = nullptr;
-static lv_obj_t *standingArm = nullptr;
-static lv_obj_t *standingArm2 = nullptr;
+static lv_obj_t *standingScene = nullptr;
 static lv_timer_t *standingAutoCloseTimer = nullptr;
 static lv_anim_t standingAnimation;
-
-static int32_t standingSmoothStep(int32_t progress)
-{
-    if (progress <= 0) return 0;
-    if (progress >= 1000) return 1000;
-    return (int32_t)((int64_t)progress * progress * (3000 - 2 * progress) / 1000000LL);
-}
-
-static int32_t standingMove(int32_t progress, int32_t start, int32_t end)
-{
-    if (progress <= start) return 0;
-    if (progress >= end) return 1000;
-    return standingSmoothStep((progress - start) * 1000 / (end - start));
-}
+static int32_t standingProgress = 0;
 
 static int32_t standingReach(int32_t progress)
 {
-    if (progress < 100) return 0;
-    if (progress < 520) return standingMove(progress, 100, 520);
-    if (progress < 700) return 1000;
-    if (progress < 960) return 1000 - standingMove(progress, 700, 960);
-    return 0;
+    if (progress < 95) return 0;
+    if (progress < 320) return reminderPhase(progress, 95, 320);
+    if (progress < 755) return 1000;
+    return 1000 - reminderPhase(progress, 755, 925);
+}
+
+static void standingDrawArm(const ReminderPainter &p, int32_t shoulderX,
+                            int32_t shoulderY, int32_t elbowX, int32_t elbowY,
+                            int32_t handX, int32_t handY)
+{
+    const uint32_t skin = 0xF6C6A8;
+    reminderLine(p, shoulderX, shoulderY, elbowX, elbowY, 13, 0x173F37);
+    reminderLine(p, elbowX, elbowY, handX, handY, 13, 0x173F37);
+    reminderLine(p, shoulderX, shoulderY, elbowX, elbowY, 10, skin);
+    reminderLine(p, elbowX, elbowY, handX, handY, 10, skin);
+    reminderLine(p, shoulderX, shoulderY,
+                 reminderMix(shoulderX, elbowX, 410),
+                 reminderMix(shoulderY, elbowY, 410), 17, 0x38C99A);
+    reminderCircle(p, handX, handY, 6, skin);
+    reminderCircle(p, handX - 1, handY - 2, 2, 0xFFE5CB, 170);
+}
+
+static void standingDrawScene(lv_event_t *event)
+{
+    const ReminderPainter p = reminderPainter(event);
+    const int32_t progress = standingProgress;
+    const int32_t reach = standingReach(progress);
+    // A small knee bend precedes the reach. Both feet remain on the floor.
+    int32_t anticipation = reminderPhase(progress, 0, 55);
+    if (progress >= 55) anticipation = 1000 - reminderPhase(progress, 55, 150);
+    const int32_t dip = anticipation * 4 / 1000;
+    const int32_t lift = reach * 8 / 1000;
+    int32_t lean = 0;
+    if (progress >= 385 && progress < 495)
+        lean = -reminderMix(0, 11, reminderPhase(progress, 385, 495));
+    else if (progress >= 495 && progress < 635)
+        lean = reminderMix(-11, 11, reminderPhase(progress, 495, 635));
+    else if (progress >= 635 && progress < 750)
+        lean = reminderMix(11, 0, reminderPhase(progress, 635, 750));
+
+    const int32_t headX = 102 + lean;
+    const int32_t headY = 99 - lift + dip;
+    const int32_t shoulderY = 131 - lift + dip;
+    const int32_t opening = reach < 450 ? reminderEase(reach * 1000 / 450) : 1000;
+    const int32_t overhead = reach <= 450 ? 0 : reminderEase((reach - 450) * 1000 / 550);
+    const int32_t elbowX = reach <= 450 ? reminderMix(56, 49, opening)
+                                                       : reminderMix(49, 69, overhead);
+    const int32_t elbowY = reach <= 450 ? reminderMix(158, 117, opening)
+                                                       : reminderMix(117, 88, overhead);
+    const int32_t handX = reach <= 450 ? reminderMix(65, 42, opening)
+                                                      : reminderMix(42, 97, overhead);
+    const int32_t handY = reach <= 450 ? reminderMix(188, 83, opening)
+                                                      : reminderMix(83, 58, overhead);
+    const int32_t armDip = dip * (1000 - reach) / 1000;
+
+    reminderRect(p, 0, 0, 204, 252, 22, 0x123A32);
+    reminderCircle(p, 102, 127, 86, 0x173F36);
+    reminderCircle(p, 102, 127, 72, 0x19473B);
+    reminderCircle(p, 35, 61, 3, 0x56D7AD, 150);
+    reminderCircle(p, 167, 88, 2, 0xA7F3D0, 165);
+    reminderLine(p, 157, 50, 157, 60, 2, 0x6DE4BB, 180);
+    reminderLine(p, 152, 55, 162, 55, 2, 0x6DE4BB, 180);
+    reminderRect(p, 51, 222, 103, 9, 5, 0x0B2924, 180);
+    reminderRect(p, 69, 224, 67, 3, 2, 0x061E1B, 155);
+
+    // Trouser legs bend at the knees while the ankles stay fixed.
+    const int32_t kneeSpread = anticipation * 3 / 1000;
+    reminderLine(p, 92, 174 + dip, 88 - kneeSpread, 198, 17, 0x216A59);
+    reminderLine(p, 88 - kneeSpread, 198, 87, 215, 16, 0x216A59);
+    reminderLine(p, 112, 174 + dip, 116 + kneeSpread, 198, 17, 0x1C5A4D);
+    reminderLine(p, 116 + kneeSpread, 198, 117, 215, 16, 0x1C5A4D);
+    reminderLine(p, 85, 184 + dip, 82 - kneeSpread, 200, 3, 0x3B8E76, 160);
+    reminderRect(p, 72, 216, 28, 11, 6, 0xD5EEE2);
+    reminderRect(p, 105, 216, 28, 11, 6, 0xE5F5EA);
+    reminderRect(p, 73, 223, 27, 4, 2, 0x8EB6A6);
+    reminderRect(p, 105, 223, 27, 4, 2, 0x9BC2B2);
+
+    // Separate upper arms and forearms allow the elbows to lead the gesture.
+    standingDrawArm(p, 80 + lean, shoulderY,
+                    elbowX + lean, elbowY + armDip,
+                    handX + lean, handY + armDip);
+    standingDrawArm(p, 124 + lean, shoulderY,
+                    204 - elbowX + lean, elbowY + armDip,
+                    204 - handX + lean, handY + armDip);
+
+    reminderLine(p, 102 + lean / 3, 159 + dip,
+                 102 + lean, 142 - lift + dip, 47, 0x123B32);
+    reminderLine(p, 102 + lean / 3, 159 + dip,
+                 102 + lean, 142 - lift + dip, 44, 0x38C99A);
+    reminderLine(p, 87 + lean / 3, 155 + dip,
+                 87 + lean, 139 - lift + dip, 4, 0x9AF0CD, 125);
+    reminderLine(p, 92 + lean / 3, 177 + dip,
+                 112 + lean / 3, 177 + dip, 3, 0x229D77, 175);
+    reminderCircle(p, 112 + lean, 137 - lift + dip, 3, 0xCBFCE4, 180);
+    reminderLine(p, headX, headY + 18, headX, headY + 29, 13, 0xEDB496);
+    reminderArc(p, headX, headY + 25, 9, 10, 170, 3, 0x209C76);
+
+    // Hair, cheeks and a relaxed expression make the figure readable at 1x.
+    reminderCircle(p, headX, headY - 2, 23, 0x163B34);
+    reminderCircle(p, headX - 22, headY + 3, 5, 0xF0B797);
+    reminderCircle(p, headX + 22, headY + 3, 5, 0xF0B797);
+    reminderCircle(p, headX, headY + 3, 21, 0xF6C6A8);
+    reminderArc(p, headX, headY - 1, 22, 183, 355, 8, 0x163B34);
+    reminderLine(p, headX - 17, headY - 11, headX - 5, headY - 16, 8, 0x163B34);
+    reminderLine(p, headX - 5, headY - 16, headX + 8, headY - 11, 8, 0x163B34);
+    reminderCircle(p, headX - 13, headY + 9, 4, 0xE98F83, 85);
+    reminderCircle(p, headX + 13, headY + 9, 4, 0xE98F83, 85);
+    if (reach > 900) {
+        reminderArc(p, headX - 7, headY + 5, 3, 190, 350, 2, 0x28483D);
+        reminderArc(p, headX + 7, headY + 5, 3, 190, 350, 2, 0x28483D);
+    } else {
+        reminderCircle(p, headX - 7, headY + 3, 2, 0x28483D);
+        reminderCircle(p, headX + 7, headY + 3, 2, 0x28483D);
+    }
+    reminderArc(p, headX, headY + 8, 6, 20, 160, 2, 0xA05A49);
+
+    const lv_opa_t breath = (lv_opa_t)(reach * 120 / 1000);
+    reminderArc(p, 102 + lean, 65, 25, 208, 238, 2, 0xA7F3D0, breath);
+    reminderArc(p, 102 + lean, 65, 25, 302, 332, 2, 0xA7F3D0, breath);
+    // Phase marks crossfade, including the return to the first loop frame.
+    const int32_t preparing = 1000 - reminderPhase(progress, 260, 330)
+                                  + reminderPhase(progress, 915, 980);
+    const int32_t relaxing = reminderPhase(progress, 735, 805)
+                                - reminderPhase(progress, 915, 980);
+    const int32_t phaseOpacity[3] = {preparing, 1000 - preparing - relaxing, relaxing};
+    for (int32_t i = 0; i < 3; ++i) {
+        reminderRect(p, 77 + i * 19, 242, 12, 3, 2, 0x285446);
+        reminderRect(p, 77 + i * 19, 242, 12, 3, 2, 0x6EE7B7,
+                     (lv_opa_t)(phaseOpacity[i] * 255 / 1000));
+    }
 }
 
 static void standingAnimationCb(void *, int32_t progress)
 {
-    const int32_t reach = standingReach(progress);
-    const int32_t lift = reach * 6 / 1000;
-    const int32_t sway = reach * 2 / 1000;
-
-    // A single, readable gesture: the person is already standing, raises both
-    // arms overhead, holds the stretch, then relaxes them back down.
-    const int32_t headX = 78 + sway;
-    const int32_t headY = 77 - lift;
-    if (standingHead) lv_obj_set_pos(standingHead, headX, headY);
-    if (standingEye) lv_obj_set_pos(standingEye, headX + 10, headY + 16);
-    if (standingBody) {
-        lv_obj_set_size(standingBody, 56, 58 + lift);
-        lv_obj_set_pos(standingBody, 71 + sway, 126 - lift);
-    }
-    if (standingLeg) {
-        lv_obj_set_pos(standingLeg, 80 + sway, 178 - lift);
-        lv_obj_set_style_transform_angle(standingLeg, 0, 0);
-    }
-    if (standingLeg2) {
-        lv_obj_set_pos(standingLeg2, 105 + sway, 178 - lift);
-        lv_obj_set_style_transform_angle(standingLeg2, 0, 0);
-    }
-    if (standingArm) {
-        lv_obj_set_pos(standingArm, 119 + sway, 132 - lift);
-        lv_obj_set_style_transform_angle(standingArm, -1550 * reach / 1000, 0);
-    }
-    if (standingArm2) {
-        lv_obj_set_pos(standingArm2, 64 + sway, 132 - lift);
-        lv_obj_set_style_transform_angle(standingArm2, 1550 * reach / 1000, 0);
-    }
+    if (standingProgress == progress) return;
+    standingProgress = progress;
+    if (standingScene) lv_obj_invalidate(standingScene);
 }
 
 static void closeStandingPopup(lv_event_t *)
 {
-    if (standingPopup) lv_obj_add_flag(standingPopup, LV_OBJ_FLAG_HIDDEN);
+    if (standingPopup) {
+        lv_obj_add_flag(standingPopup, LV_OBJ_FLAG_HIDDEN);
+        lv_anim_del(standingPopup, standingAnimationCb);
+    }
     standingReminderActive = false;
-    lv_anim_del(nullptr, standingAnimationCb);
     if (standingAutoCloseTimer) {
         lv_timer_del(standingAutoCloseTimer);
         standingAutoCloseTimer = nullptr;
@@ -82,116 +163,46 @@ static void closeStandingPopup(lv_event_t *)
 
 static void standingAutoCloseCb(lv_timer_t *timer)
 {
-    if (standingPopup) lv_obj_add_flag(standingPopup, LV_OBJ_FLAG_HIDDEN);
-    standingReminderActive = false;
-    lv_anim_del(nullptr, standingAnimationCb);
     standingAutoCloseTimer = nullptr;
     lv_timer_del(timer);
+    closeStandingPopup(nullptr);
 }
 
 static void showStandingPopup()
 {
     if (!standingPopup) return;
-    standingReminderActive = true;
-    // Standing takes priority if a hydration popup is already on screen.
+    // Reset the previous run, including its timer, before restarting the loop.
+    closeStandingPopup(nullptr);
     closeHydrationPopup(nullptr);
+    standingReminderActive = true;
+    standingProgress = 0;
+    lv_obj_invalidate(standingScene);
     lv_obj_clear_flag(standingPopup, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(standingPopup);
     lv_anim_init(&standingAnimation);
     lv_anim_set_var(&standingAnimation, standingPopup);
     lv_anim_set_values(&standingAnimation, 0, 1000);
-    lv_anim_set_time(&standingAnimation, 2800);
-    lv_anim_set_playback_time(&standingAnimation, 2800);
+    lv_anim_set_time(&standingAnimation, 6000);
+    lv_anim_set_path_cb(&standingAnimation, lv_anim_path_linear);
     lv_anim_set_repeat_count(&standingAnimation, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_exec_cb(&standingAnimation, standingAnimationCb);
     lv_anim_start(&standingAnimation);
-    if (standingAutoCloseTimer) lv_timer_del(standingAutoCloseTimer);
     standingAutoCloseTimer = lv_timer_create(standingAutoCloseCb, 20000, nullptr);
 }
 
 static void createStandingReminderUi()
 {
     standingPopup = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(standingPopup, 500, 275);
-    lv_obj_center(standingPopup);
-    lv_obj_set_style_bg_color(standingPopup, lv_color_hex(0x102F2B), 0);
-    lv_obj_set_style_border_width(standingPopup, 2, 0);
-    lv_obj_set_style_border_color(standingPopup, lv_color_hex(0x34D399), 0);
-    lv_obj_set_style_radius(standingPopup, 24, 0);
-    lv_obj_set_style_shadow_width(standingPopup, 24, 0);
-    lv_obj_set_style_shadow_color(standingPopup, lv_color_hex(0x10B981), 0);
-    lv_obj_clear_flag(standingPopup, LV_OBJ_FLAG_SCROLLABLE);
-
-    lv_obj_t *title = lv_label_create(standingPopup);
-    lv_label_set_text(title, "站起来伸个懒腰");
-    lv_obj_set_style_text_font(title, &ui_font_standing_16, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(0xD1FAE5), 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 55, 18);
-
-    lv_obj_t *hint = lv_label_create(standingPopup);
-    lv_label_set_text(hint, "伸个懒腰，放松一下身体!");
-    lv_obj_set_style_text_font(hint, &ui_font_standing_16, 0);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x6EE7B7), 0);
-    lv_obj_align(hint, LV_ALIGN_TOP_MID, 55, 65);
-
-    standingHead = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingHead, 42, 42); lv_obj_set_pos(standingHead, 78, 77);
-    lv_obj_set_style_radius(standingHead, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(standingHead, lv_color_hex(0xFCD5B5), 0);
-    lv_obj_set_style_border_width(standingHead, 0, 0);
-    standingBody = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingBody, 56, 58); lv_obj_set_pos(standingBody, 71, 126);
-    lv_obj_set_style_radius(standingBody, 20, 0);
-    lv_obj_set_style_bg_color(standingBody, lv_color_hex(0x10B981), 0);
-    lv_obj_set_style_border_width(standingBody, 0, 0);
-    standingEye = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingEye, 6, 6); lv_obj_set_pos(standingEye, 88, 93);
-    lv_obj_set_style_radius(standingEye, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(standingEye, lv_color_hex(0x064E3B), 0);
-    lv_obj_set_style_border_width(standingEye, 0, 0);
-    standingLeg = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingLeg, 12, 42); lv_obj_set_pos(standingLeg, 80, 178);
-    lv_obj_set_style_radius(standingLeg, 6, 0);
-    lv_obj_set_style_bg_color(standingLeg, lv_color_hex(0x047857), 0);
-    lv_obj_set_style_border_width(standingLeg, 0, 0);
-    lv_obj_set_style_transform_pivot_x(standingLeg, 6, 0);
-    lv_obj_set_style_transform_pivot_y(standingLeg, 4, 0);
-    lv_obj_set_style_transform_angle(standingLeg, 0, 0);
-    standingLeg2 = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingLeg2, 12, 42); lv_obj_set_pos(standingLeg2, 105, 178);
-    lv_obj_set_style_radius(standingLeg2, 6, 0);
-    lv_obj_set_style_bg_color(standingLeg2, lv_color_hex(0x047857), 0);
-    lv_obj_set_style_border_width(standingLeg2, 0, 0);
-    lv_obj_set_style_transform_pivot_x(standingLeg2, 6, 0);
-    lv_obj_set_style_transform_pivot_y(standingLeg2, 4, 0);
-    lv_obj_set_style_transform_angle(standingLeg2, 0, 0);
-    standingArm = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingArm, 10, 52); lv_obj_set_pos(standingArm, 119, 132);
-    lv_obj_set_style_radius(standingArm, 5, 0);
-    lv_obj_set_style_bg_color(standingArm, lv_color_hex(0xFCD5B5), 0);
-    lv_obj_set_style_border_width(standingArm, 0, 0);
-    lv_obj_set_style_transform_pivot_x(standingArm, 5, 0);
-    lv_obj_set_style_transform_pivot_y(standingArm, 4, 0);
-    lv_obj_set_style_transform_angle(standingArm, 0, 0);
-    standingArm2 = lv_obj_create(standingPopup);
-    lv_obj_set_size(standingArm2, 10, 52); lv_obj_set_pos(standingArm2, 64, 132);
-    lv_obj_set_style_radius(standingArm2, 5, 0);
-    lv_obj_set_style_bg_color(standingArm2, lv_color_hex(0xFCD5B5), 0);
-    lv_obj_set_style_border_width(standingArm2, 0, 0);
-    lv_obj_set_style_transform_pivot_x(standingArm2, 5, 0);
-    lv_obj_set_style_transform_pivot_y(standingArm2, 4, 0);
-    lv_obj_set_style_transform_angle(standingArm2, 0, 0);
-
-    lv_obj_t *done = lv_btn_create(standingPopup);
-    lv_obj_set_size(done, 190, 52);
-    lv_obj_align(done, LV_ALIGN_BOTTOM_RIGHT, -28, -24);
-    lv_obj_set_style_bg_color(done, lv_color_hex(0x059669), 0);
-    lv_obj_set_style_radius(done, 14, 0);
-    lv_obj_t *doneLabel = lv_label_create(done);
-    lv_label_set_text(doneLabel, "我起来啦");
-    lv_obj_set_style_text_font(doneLabel, &ui_font_standing_16, 0);
-    lv_obj_center(doneLabel);
-    lv_obj_add_event_cb(done, closeStandingPopup, LV_EVENT_CLICKED, nullptr);
+    reminderStylePopup(standingPopup, 0x102F2B, 0x6EE7B7);
+    standingScene = reminderCreateScene(standingPopup, 18, 24, 204, 252, standingDrawScene);
+    reminderLabel(standingPopup, "站起来伸个懒腰", &ui_font_standing_16,
+                  0xD1FAE5, 244, 52, 264);
+    reminderLabel(standingPopup, "伸个懒腰\n放松一下身体!", &ui_font_standing_16,
+                  0x89BBA7, 244, 90, 248);
+    reminderLabel(standingPopup, "STRETCH.  BREATHE.  RESET.", &lv_font_montserrat_14,
+                  0x6EA590, 244, 174, 264);
+    reminderButton(standingPopup, "我起来啦", &ui_font_standing_16,
+                   0x059669, closeStandingPopup);
     lv_obj_add_flag(standingPopup, LV_OBJ_FLAG_HIDDEN);
 }
 

@@ -8,32 +8,32 @@ static void showGuideScreenEvent(lv_event_t *)
 static void createGuideScreen()
 {
     guideScreen = lv_obj_create(nullptr);
-    lv_obj_set_style_bg_color(guideScreen, lv_color_hex(0x020C1B), 0);
+    lv_obj_set_style_bg_color(guideScreen, lv_color_hex(UI_BG), 0);
     lv_obj_clear_flag(guideScreen, LV_OBJ_FLAG_SCROLLABLE);
     makeMainNav(guideScreen, 6);
 
     lv_obj_t *titleUse = lv_label_create(guideScreen);
     lv_label_set_text(titleUse, "使用");
     lv_obj_set_style_text_font(titleUse, &ui_font_cn_16, 0);
-    lv_obj_set_style_text_color(titleUse, lv_color_white(), 0);
+    lv_obj_set_style_text_color(titleUse, lv_color_hex(UI_TEXT), 0);
     lv_obj_align(titleUse, LV_ALIGN_TOP_LEFT, 35, 84);
     lv_obj_t *titleSay = lv_label_create(guideScreen);
     lv_label_set_text(titleSay, "说");
     lv_obj_set_style_text_font(titleSay, &ui_font_say_16, 0);
-    lv_obj_set_style_text_color(titleSay, lv_color_white(), 0);
+    lv_obj_set_style_text_color(titleSay, lv_color_hex(UI_TEXT), 0);
     lv_obj_align_to(titleSay, titleUse, LV_ALIGN_OUT_RIGHT_MID, 1, 0);
     lv_obj_t *titleMing = lv_label_create(guideScreen);
     lv_label_set_text(titleMing, "明");
     lv_obj_set_style_text_font(titleMing, &ui_font_cn_16, 0);
-    lv_obj_set_style_text_color(titleMing, lv_color_white(), 0);
+    lv_obj_set_style_text_color(titleMing, lv_color_hex(UI_TEXT), 0);
     lv_obj_align_to(titleMing, titleSay, LV_ALIGN_OUT_RIGHT_MID, 1, 0);
 
     lv_obj_t *card = lv_obj_create(guideScreen);
     lv_obj_set_size(card, 730, 320);
     lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 125);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0x0B2342), 0);
+    lv_obj_set_style_bg_color(card, lv_color_hex(UI_SURFACE), 0);
     lv_obj_set_style_border_width(card, 1, 0);
-    lv_obj_set_style_border_color(card, lv_color_hex(0x287CC2), 0);
+    lv_obj_set_style_border_color(card, lv_color_hex(UI_EDGE), 0);
     lv_obj_set_style_radius(card, 18, 0);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -55,12 +55,12 @@ static void createGuideScreen()
     lv_obj_set_size(text, 675, 282);
     lv_label_set_long_mode(text, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(text, &ui_font_todo_cjk_16, 0);
-    lv_obj_set_style_text_color(text, lv_color_hex(0xD7E9FF), 0);
+    lv_obj_set_style_text_color(text, lv_color_hex(UI_TEXT), 0);
     lv_obj_align(text, LV_ALIGN_TOP_LEFT, 18, 16);
 
     lv_obj_t *author = lv_label_create(guideScreen);
     lv_label_set_text(author, "作者 JunkMaker    Email: 1077964665@qq.com");
     lv_obj_set_style_text_font(author, &ui_font_cn_16, 0);
-    lv_obj_set_style_text_color(author, lv_color_hex(0x7DD3FC), 0);
+    lv_obj_set_style_text_color(author, lv_color_hex(UI_MUTED), 0);
     lv_obj_align(author, LV_ALIGN_BOTTOM_MID, 0, -16);
 }
